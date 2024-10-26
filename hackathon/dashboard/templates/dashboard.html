@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map View</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            align-items: center;
+            background-color: #f0f0f5;
+        }
+
+        header, footer {
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+            background-color: #333;
+            color: #fff;
+        }
+
+        footer {
+            margin-top: auto;
+        }
+
+        #map-container {
+            display: flex;
+            justify-content: center;
+            width: 90%;
+            margin: 20px auto;
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #transfer {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin: 20px 0;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 15px 30px;
+            margin: 0 10px;
+            font-size: 1.2rem;
+            color: #fff;
+            background-color: #6c757d;
+            text-decoration: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .button:hover {
+            background-color: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        #pin-name {
+            width: 80%;
+            padding: 12px;
+            font-size: 1rem;
+            margin-bottom: 10px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #confirm-button {
+            padding: 10px 20px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 8px;
+            background-color: #28a745;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #confirm-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #confirm-button:hover:not(:disabled) {
+            background-color: #218838;
+        }
+        .red-button {
+            padding: 20px 40px;
+            font-size: 1.5rem;
+            background-color: #dc3545;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .red-button:hover {
+            background-color: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .red-button:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Zarządzanie bazą danych</h1>
+    </header>
+
+    <div id="transfer">
+        <div id="save_point">
+            <a href="{% url 'save_points' %}" class="button">Dodaj Punkt Bezpieczeństwa</a>
+        </div>
+    
+        <div id="danger_area">
+            <a href="{% url 'danger_area' %}" class="button">Dodaj Obszar Zagrożenia</a>
+        </div>
+    </div>
+    <div id="alert">
+        <button class="red-button" onclick="confirmWarning()">Wyślij Ostrzeżenie</button>
+    </div>
+    
+
+    <footer>
+        <p>&copy; 2024 SprintOS</p>
+    </footer>
+
+    <script>
+        function confirmWarning() {
+            const confirmation = confirm("Czy na pewno chcesz wysłać ostrzeżenie?");
+            if (confirmation) {
+                alert('Ostrzeżenie wysłane!');
+                // You can add any additional actions to perform on confirmation here
+            } else {
+                alert('Ostrzeżenie nie zostało wysłane.');
+            }
+        }
+    </script>
+</body>
+</html>

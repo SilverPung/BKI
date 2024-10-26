@@ -79,6 +79,27 @@
         #confirm-button:hover:not(:disabled) {
             background-color: #218838;
         }
+        .button {
+            display: inline-block;
+            padding: 15px 30px; /* Increased padding */
+            margin: 10px 10px ;
+            font-size: 1.2rem; /* Increased font size */
+            color: #fff;
+            background-color: #6c757d; /* Grayish color */
+            text-decoration: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Shadow effect */
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .button:hover {
+            background-color: #5a6268; /* Darker gray on hover */
+            transform: translateY(-2px);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -94,6 +115,10 @@
     <div id="controls">
         <input type="text" id="pin-name" placeholder="Dodaj Nazwę" />
         <button id="confirm-button" disabled>Dodaj Punkt</button>
+    </div>
+
+    <div id="return">
+        <a href="{% url 'dashboard' %}" class="button">Powrót</a>
     </div>
 
     <footer>
@@ -142,7 +167,7 @@
                 .then(response => response.json())
                 .then(data => {
                     console.log("Coordinates saved:", data);
-                    alert("Pin point and name sent to the server!");
+
 
                     document.getElementById('confirm-button').disabled = true;
                     document.getElementById('pin-name').value = '';
@@ -152,7 +177,7 @@
                     alert("Failed to send coordinates.");
                 });
             } else {
-                alert("Please select a location on the map and enter a pin name.");
+
             }
         });
     </script>

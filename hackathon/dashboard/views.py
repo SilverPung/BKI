@@ -76,4 +76,30 @@ def get_danger_area(request):
         return JsonResponse({"status": "success"})
     return JsonResponse({"status": "failed"}, status=400)
 
+def dashboard(request):
+    return render(request, 'dashboard.html')
+
+def post_danger_area(request):
+    areas=[]
+    for area in DangerArea.objects.all():
+        points = DangerPoints.objects.filter(danger_area=area).all()
+        areas.append({
+            "name": area.name,
+            "points": [
+                {
+                    "latitude": point.latitude,
+                    "longitude": point.longitude
+                }
+                for point in points
+            ]
+        })
         
+
+    return JsonResponse(areas, safe=False)
+
+    
+#function to send data to the printer
+def sending_data():
+    pass 
+
+    
