@@ -13,52 +13,48 @@
             padding: 0;
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
             align-items: center;
-            background-color: #f0f0f5;
-        }
 
+        }
+        
         header, footer {
             width: 100%;
-            padding: 20px;
+            padding: 15px;
             text-align: center;
             background-color: #333;
             color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
         }
+
         .button {
             display: inline-block;
-            padding: 15px 30px; /* Increased padding */
-            margin: 10px 10px ;
-            font-size: 1.2rem; /* Increased font size */
+            padding: 15px 30px;
+            margin: 10px 10px;
+            font-size: 1.1rem;
             color: #fff;
-            background-color: #6c757d; /* Grayish color */
+            background-color: #6c757d;
             text-decoration: none;
             border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Shadow effect */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
             transition: background-color 0.3s, transform 0.2s;
         }
 
         .button:hover {
-            background-color: #5a6268; /* Darker gray on hover */
+            background-color: #5a6268;
             transform: translateY(-2px);
         }
 
-        .button:active {
-            transform: translateY(0);
-        }
-
         #map-container {
-            display: flex;
-            justify-content: center;
             width: 90%;
+            max-width: 2100px;
             margin: 20px auto;
         }
 
         #map {
-            height: 500px;
+            height: 60vh;
             width: 100%;
-            border-radius: 15px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
 
         #controls {
@@ -69,24 +65,25 @@
         }
 
         #polygon-name {
-            width: 80%;
-            padding: 12px;
+            width: 90%;
+            padding: 10px;
             font-size: 1rem;
             margin-bottom: 10px;
             border: 2px solid #333;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
         }
 
-        #confirm-button, #redo-button, #delete-last-point-button {
+        button {
             padding: 10px 20px;
-            font-size: 1.1rem;
+            font-size: 1rem;
             border: none;
             border-radius: 8px;
             color: #fff;
             cursor: pointer;
-            transition: background-color 0.3s;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            width: 90%;
+            max-width: 300px;
         }
 
         #confirm-button {
@@ -98,24 +95,24 @@
             cursor: not-allowed;
         }
 
-        #confirm-button:hover:not(:disabled) {
-            background-color: #218838;
-        }
-
         #redo-button {
             background-color: #dc3545;
         }
 
-        #redo-button:hover {
-            background-color: #c82333;
-        }
-
         #delete-last-point-button {
             background-color: #ffc107;
+            color: #333;
         }
 
-        #delete-last-point-button:hover {
-            background-color: #e0a800;
+        #danger-select {
+            padding: 8px;
+            width: 90%;
+            max-width: 300px;
+            font-size: 1rem;
+            border: 2px solid #333;
+            border-radius: 8px;
+            outline: none;
+            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -132,6 +129,13 @@
     <div id="controls">
         <input type="text" id="polygon-name" placeholder="Wprowadź nazwę obszaru" />
         <button id="confirm-button" disabled>Potwierdź</button>
+        <select name="danger" id="danger-select">
+            <option value="">--Wybierz zagrożenie--</option>
+            <option value="flod">Podtopienia</option>
+            <option value="droughts">Susze</option>
+            <option value="earthquake">Trzęsienia ziemi</option>
+            <option value="tornado">Huragan</option>
+        </select>
         <button id="redo-button" disabled>Reset</button>
         <button id="delete-last-point-button" disabled>Usuń ostatni punkt</button>
     </div>
@@ -207,9 +211,10 @@
         }
 
         document.getElementById('confirm-button').addEventListener('click', function() {
-            var polygonName = document.getElementById('polygon-name').value;
-
-            if (points.length >= 3 && polygonName) {
+            const polygonName = document.getElementById('polygon-name').value;
+            const dangerType = document.getElementById('danger-select').value;
+        
+            if (points.length >= 3 && polygonName && dangerType) {
                 fetch("{% url 'get_danger_area' %}", {
                     method: "POST",
                     headers: {
@@ -217,13 +222,13 @@
                     },
                     body: JSON.stringify({ 
                         vertices: points,
-                        name: polygonName 
+                        name: polygonName,
+                        danger_type: dangerType 
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
                     console.log("Polygon saved:", data);
-
                     resetSelection();
                 })
                 .catch(error => {
@@ -231,7 +236,7 @@
                     alert("Failed to send polygon data.");
                 });
             } else {
-
+                alert("Please enter a name for the area and select a danger type.");
             }
         });
 

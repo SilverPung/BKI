@@ -140,13 +140,89 @@
     <div id="alert">
         <button class="red-button" onclick="confirmWarning()">Wyślij Ostrzeżenie</button>
     </div>
-    
+    <div id="send-buttons" style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;">
+        <form action="{% url 'send_save_points' %}" method="POST">
+            {% csrf_token %}
+            <button type="submit" class="button">Wyślij Punkt Bezpieczeństwa</button>
+        </form>
+        
+        <form action="{% url 'send_danger_area' %}" method="POST">
+            {% csrf_token %}
+            <button type="submit" class="button">Wyślij Obszar Zagrożenia</button>
+        </form>
+    </div>
+
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
 
     <footer>
         <p>&copy; 2024 SprintOS</p>
     </footer>
 
     <script>
+        async function initMap() {
+            // Create the map and set its initial view
+            var map = L.map('map').setView([{{ latitude }}, {{ longitude }}], 13);
+    
+            // Initialize bounds
+            var bounds = L.latLngBounds();
+    
+            // Add a tile layer to the map using OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+    
+            try {
+                // Fetch the data from your API
+                const response = await fetch('/dashboard/post_all_data'); // Replace with your API endpoint
+                const data = await response.json();
+    
+                // Iterate over the points in the data
+                data.forEach(item => {
+                    console.log(item);
+                    if (item.type) {
+                        // Validate each point has both latitude and longitude
+                        const dangerAreaLatLngs = item.points
+                            .filter(point => point.latitude && point.longitude)
+                            .map(point => [point.latitude, point.longitude]);
+    
+                        // Only add the polygon if we have valid points
+                        if (dangerAreaLatLngs.length > 0) {
+                            const polygon = L.polygon(dangerAreaLatLngs, {
+                                color: 'red',
+                                fillColor: 'rgba(255, 0, 0, 0.5)',
+                                fillOpacity: 0.5
+                            }).addTo(map).bindPopup(`<b>${item.name}</b><br>Danger Area`);
+                            
+                            // Extend bounds to include each danger area separately
+                            dangerAreaLatLngs.forEach(latLng => bounds.extend(latLng));
+                        }
+                    } else if (!item.type && item.latitude && item.longitude) {
+                        // If it's a point of interest (no type specified), add a marker
+                        L.marker([item.latitude, item.longitude])
+                            .addTo(map)
+                            .bindPopup(`<b>${item.name}</b>`);
+                        
+                        // Extend bounds to include this marker
+                        bounds.extend([item.latitude, item.longitude]);
+                    }
+                });
+    
+                // Fit the map to the bounds of all danger areas and points
+                map.fitBounds(bounds);
+    
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+    
+        // Call the initMap function when the page is loaded
+        document.addEventListener('DOMContentLoaded', (event) => {
+            initMap();
+        });
+    
         function confirmWarning() {
             const confirmation = confirm("Czy na pewno chcesz wysłać ostrzeżenie?");
             if (confirmation) {

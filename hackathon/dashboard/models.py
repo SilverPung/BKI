@@ -14,6 +14,7 @@ class SavePoint(models.Model):
 
 class DangerArea(models.Model):
     name = models.CharField(max_length=100)
+    danger_type = models.CharField(max_length=100, default="danger")
     
 
     def __str__(self):
