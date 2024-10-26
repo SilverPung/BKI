@@ -2,11 +2,14 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-from .models import SavePoint, DangerArea, DangerPoints
-from django.core.serializers import serialize
+from .models import SavePoint, DangerArea, DangerPoints,Status
+
 import requests
+from django.views.decorators.http import require_POST
 
 # Create your views here.
+
+URL = "http://192.168.43.131:5000" 
 
 
 def save_points(request):
@@ -80,11 +83,14 @@ def get_danger_area(request):
     return JsonResponse({"status": "failed"}, status=400)
 
 def dashboard(request):
+    status_instance = Status.objects.first()
+    status = status_instance.status
     latitude = 53.1235
     longitude = 18.0084
     context = {
         'latitude': latitude,
-        'longitude': longitude
+        'longitude': longitude,
+        'status': status
     }
     return render(request, 'dashboard.html', context)
 
@@ -109,12 +115,15 @@ def post_danger_area(request):
 
 
 def send_save_points(request):
-    url = "http://192.168.43.131:5000"  # Target API URL
+    url = URL  # Target API URL
     data = {
-        "title": "sync_save_points",  # Add a title or comment
-        "points": list(SavePoint.objects.values('id', 'latitude', 'longitude'))
+    "sync_save_points": {
+        "points": [
+            {"id": point["id"], "lat": point["latitude"], "lon": point["longitude"]}
+            for point in SavePoint.objects.values('id', 'latitude', 'longitude')
+        ]
     }
-    
+}
     try:
         response = requests.post(url, json=data, timeout=1)  # Increased timeout
         response.raise_for_status()  # Raises exception for HTTP errors
@@ -128,7 +137,7 @@ def send_save_points(request):
     return redirect('dashboard')
 
 def send_danger_area(request):
-    url = "http://192.168.43.131:5000"  # Target API URL
+    url = URL # Target API URL
     areas = []  # Initialize as a list to hold multiple danger areas
     for area in DangerArea.objects.all():
         points = DangerPoints.objects.filter(danger_area=area).all()
@@ -136,16 +145,17 @@ def send_danger_area(request):
             "id": area.id,
             "type": area.danger_type,
             "points": [
-                {
-                    "latitude": point.latitude,
-                    "longitude": point.longitude
-                }
+                [
+                     point.latitude,
+                    point.longitude
+                ]
                 for point in points
             ]
         })
     data = {
-        "title": "sync_danger_zones",
-        "areas": areas  # List of dictionaries, one for each danger area
+        "sync_danger_zones": {
+            "areas": areas  # List of dictionaries, one for each danger area
+        }
     }
     try:
         response = requests.post(url, json=data, timeout=1)  # Increased timeout
@@ -158,8 +168,7 @@ def send_danger_area(request):
     
     return redirect('dashboard')
 
-        
-
+    
 def post_all_data(request):
 
     areas=[]
@@ -183,4 +192,39 @@ def post_all_data(request):
 
     
 
+@require_POST
+def send_alert(request):
+    # Get the status value from the form
+    url=URL
+    status_instance = Status.objects.first()
+    status_value = str(request.POST.get('status'))
+    print(status_value)
+    if status_value == '1':
+        status_instance.status = True
+        data = {
+            "change_emergency": {
+                "status": True
+            },
+        }
+        
+    elif status_value == '0':
+        status_instance.status = False
+        data = {
+            "change_emergency": {
+                "status": False
+            },
+        }
+    status_instance.save()
+
     
+    try:
+        response = requests.post(url, json=data, timeout=1)  # Increased timeout
+        response.raise_for_status()  # Raises exception for HTTP errors
+        print("Data sent successfully:", response.json())  # Print the response if successful
+    except requests.exceptions.Timeout:
+        print("Timeout")
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
+    return redirect('dashboard')  # Replace with your desired URL
+
+

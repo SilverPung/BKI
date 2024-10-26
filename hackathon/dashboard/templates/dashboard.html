@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Map View</title>
+    <title>Menadżer Danych</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
@@ -44,33 +44,43 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
-        #transfer {
+        #transfer, #send-buttons {
             display: flex;
             justify-content: center;
+            gap: 15px; /* Increased gap for better spacing */
             width: 100%;
             margin: 20px 0;
         }
 
-        .button {
-            display: inline-block;
-            padding: 15px 30px;
-            margin: 0 10px;
+        .button, .red-button {
+            padding: 15px 25px; /* Adjusted padding */
             font-size: 1.2rem;
             color: #fff;
-            background-color: #6c757d;
             text-decoration: none;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             transition: background-color 0.3s, transform 0.2s;
+            display: inline-block; /* Ensure they behave like buttons */
+        }
+
+        .button {
+            background-color: #6c757d; /* Neutral gray */
         }
 
         .button:hover {
-            background-color: #5a6268;
+            background-color: #5a6268; /* Darker gray on hover */
             transform: translateY(-2px);
         }
 
-        .button:active {
-            transform: translateY(0);
+        .red-button {
+            background-color: #dc3545; /* Red for danger */
+            padding: 15px 30px; /* Larger button for emphasis */
+            font-size: 1.3rem; /* Slightly larger font size */
+        }
+
+        .red-button:hover {
+            background-color: #c82333; /* Darker red on hover */
+            transform: translateY(-2px);
         }
 
         #pin-name {
@@ -102,25 +112,6 @@
         #confirm-button:hover:not(:disabled) {
             background-color: #218838;
         }
-        .red-button {
-            padding: 20px 40px;
-            font-size: 1.5rem;
-            background-color: #dc3545;
-            border: none;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            cursor: pointer;
-            transition: background-color 0.3s, transform 0.2s;
-        }
-
-        .red-button:hover {
-            background-color: #c82333;
-            transform: translateY(-2px);
-        }
-
-        .red-button:active {
-            transform: translateY(0);
-        }
     </style>
 </head>
 <body>
@@ -129,18 +120,29 @@
     </header>
 
     <div id="transfer">
-        <div id="save_point">
-            <a href="{% url 'save_points' %}" class="button">Dodaj Punkt Bezpieczeństwa</a>
-        </div>
+        <a href="{% url 'save_points' %}" class="button">Dodaj Punkt Bezpieczeństwa</a>
+        <a href="{% url 'danger_area' %}" class="button">Dodaj Obszar Zagrożenia</a>
+    </div>
     
-        <div id="danger_area">
-            <a href="{% url 'danger_area' %}" class="button">Dodaj Obszar Zagrożenia</a>
-        </div>
+    <div id="map-container">
+        <div id="map"></div>
     </div>
+
+
     <div id="alert">
-        <button class="red-button" onclick="confirmWarning()">Wyślij Ostrzeżenie</button>
+        <form action="{% url 'send_alert' %}" method="POST">
+            {% csrf_token %}
+            {% if status == False %}
+                <input type="hidden" name="status" value="1">
+                <button type="start" class="red-button">Ogłoś katastrofę</button>
+            {% else %}
+                <input type="hidden" name="status" value="0">
+                <button type="stop" class="red-button">Zakończ katastrofę</button>
+            {% endif %}
+        </form>    
     </div>
-    <div id="send-buttons" style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;">
+
+    <div id="send-buttons">
         <form action="{% url 'send_save_points' %}" method="POST">
             {% csrf_token %}
             <button type="submit" class="button">Wyślij Punkt Bezpieczeństwa</button>
@@ -152,10 +154,7 @@
         </form>
     </div>
 
-    <div id="map-container">
-        <div id="map"></div>
-    </div>
-
+   
     <footer>
         <p>&copy; 2024 SprintOS</p>
     </footer>
@@ -171,7 +170,7 @@
             // Add a tile layer to the map using OpenStreetMap
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
-                attribution: '© OpenStreetMap contributors'
+                attribution: 'SrintOS contributors'
             }).addTo(map);
     
             try {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dodaj Obszar Zagrożenia</title>
+    <title>Obszar Zagrożenia</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
@@ -14,9 +14,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-
         }
-        
+
         header, footer {
             width: 100%;
             padding: 15px;
@@ -64,7 +63,7 @@
             margin-top: 10px;
         }
 
-        #polygon-name {
+        #address-input, #polygon-name {
             width: 90%;
             padding: 10px;
             font-size: 1rem;
@@ -74,7 +73,7 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
         }
 
-        button {
+        #go-to-address, button {
             padding: 10px 20px;
             font-size: 1rem;
             border: none;
@@ -104,6 +103,10 @@
             color: #333;
         }
 
+        #go-to-address {
+            background-color: #007bff;
+        }
+
         #danger-select {
             padding: 8px;
             width: 90%;
@@ -127,15 +130,19 @@
     </div>
 
     <div id="controls">
+        <input type="text" id="address-input" placeholder="Wpisz adres" />
+        <button id="go-to-address">Znajdź Adres</button>
         <input type="text" id="polygon-name" placeholder="Wprowadź nazwę obszaru" />
-        <button id="confirm-button" disabled>Potwierdź</button>
         <select name="danger" id="danger-select">
             <option value="">--Wybierz zagrożenie--</option>
-            <option value="flod">Podtopienia</option>
-            <option value="droughts">Susze</option>
+            <option value="powodz">Powódź</option>
+            <option value="susze">Susze</option>
             <option value="earthquake">Trzęsienia ziemi</option>
             <option value="tornado">Huragan</option>
+            <option value="ogien">Pożar</option>
+            <option value="terror">Zamach terrorystyczny</option>
         </select>
+        <button id="confirm-button" disabled>Potwierdź</button>
         <button id="redo-button" disabled>Reset</button>
         <button id="delete-last-point-button" disabled>Usuń ostatni punkt</button>
     </div>
@@ -153,7 +160,7 @@
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            attribution: 'SprintOS contributors'
         }).addTo(map);
 
         var points = [];
@@ -175,22 +182,17 @@
             var marker = L.marker(latlng).addTo(map);
             markers.push(marker);
 
-            // Bind click event to the marker for closing the polygon
             marker.on('click', function() {
                 if (points.length >= 3 && isCloseToFirstPoint(latlng)) {
                     closePolygon();
                 }
             });
 
-            if (points.length === 1) {
-                marker.bindPopup("First Point").openPopup();
-            }
-
             document.getElementById('delete-last-point-button').disabled = points.length === 0;
         }
 
         function closePolygon() {
-            points.push(points[0]); // Close the polygon
+            points.push(points[0]);
             document.getElementById('confirm-button').disabled = false;
             document.getElementById('redo-button').disabled = false;
 
@@ -201,7 +203,7 @@
             polygon = L.polygon(points, { color: "#ff7800" }).addTo(map)
                 .bindPopup("<b>Proposed Polygon</b>").openPopup();
 
-            map.off('click'); // Disable further clicks after polygon is closed
+            map.off('click');
         }
 
         function isCloseToFirstPoint(latlng) {
@@ -209,6 +211,31 @@
             var distance = map.distance(latlng, firstPoint);
             return distance < 10;
         }
+
+        document.getElementById('go-to-address').addEventListener('click', function() {
+            var address = document.getElementById('address-input').value;
+            if (address) {
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length > 0) {
+                            var lat = parseFloat(data[0].lat);
+                            var lon = parseFloat(data[0].lon);
+                            map.setView([lat, lon], 13);
+
+                            L.marker([lat, lon]).addTo(map)
+                                .bindPopup('<b>Found Location</b><br>Latitude: ' + lat.toFixed(5) + ', Longitude: ' + lon.toFixed(5))
+                                .openPopup();
+                        } else {
+                            alert("Address not found.");
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error with geocoding:", error);
+                        alert("Failed to retrieve coordinates for the address.");
+                    });
+            }
+        });
 
         document.getElementById('confirm-button').addEventListener('click', function() {
             const polygonName = document.getElementById('polygon-name').value;
@@ -229,6 +256,7 @@
                 .then(response => response.json())
                 .then(data => {
                     console.log("Polygon saved:", data);
+                    alert("Strefa zagrożenia została zapisana.");
                     resetSelection();
                 })
                 .catch(error => {
@@ -241,7 +269,6 @@
         });
 
         document.getElementById('redo-button').addEventListener('click', resetSelection);
-
         document.getElementById('delete-last-point-button').addEventListener('click', function() {
             if (points.length > 0) {
                 var lastMarker = markers.pop();
@@ -266,7 +293,7 @@
             }
 
             markers.forEach(marker => {
-                marker.off('click'); // Remove click event from markers
+                marker.off('click');
                 map.removeLayer(marker);
             });
             markers = [];

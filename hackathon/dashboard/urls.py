@@ -16,6 +16,7 @@ urlpatterns = [
     path('send_danger_area/', views.send_danger_area, name='send_danger_area'),
 
     path('post_all_data/', views.post_all_data, name='post_all_data'),
+    path('send_alert/', views.send_alert, name='send_alert'),
 
     
 ]

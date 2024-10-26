@@ -28,3 +28,6 @@ class DangerPoints(models.Model):
 
     def __str__(self):
         return self.danger_area.name
+    
+class Status(models.Model):
+    status= models.BooleanField(default=False)

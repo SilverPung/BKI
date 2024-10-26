@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Map View</title>
+    <title>Punkty zbiórki</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
@@ -25,6 +25,7 @@
             background-color: #333;
             color: #fff;
         }
+
         footer {
             margin-top: auto;
         }
@@ -47,28 +48,40 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            gap: 10px;
+            width: 30%;
             margin-top: 10px;
         }
 
-        #pin-name {
-            width: 80%;
+        #address-input, #pin-name {
+            width: 100%;
             padding: 12px;
             font-size: 1rem;
-            margin-bottom: 10px;
             border: 2px solid #333;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        #confirm-button {
+        #go-to-address, #confirm-button {
             padding: 10px 20px;
-            font-size: 1.1rem;
+            font-size: 1rem;
             border: none;
             border-radius: 8px;
-            background-color: #28a745;
-            color: #fff;
             cursor: pointer;
+            color: #fff;
             transition: background-color 0.3s;
+        }
+
+        #go-to-address {
+            background-color: #007bff;
+        }
+
+        #go-to-address:hover {
+            background-color: #0069d9;
+        }
+
+        #confirm-button {
+            background-color: #28a745;
         }
 
         #confirm-button:disabled {
@@ -79,21 +92,22 @@
         #confirm-button:hover:not(:disabled) {
             background-color: #218838;
         }
+
         .button {
             display: inline-block;
-            padding: 15px 30px; /* Increased padding */
-            margin: 10px 10px ;
-            font-size: 1.2rem; /* Increased font size */
+            padding: 15px 30px;
+            margin: 10px 10px;
+            font-size: 1.2rem;
             color: #fff;
-            background-color: #6c757d; /* Grayish color */
+            background-color: #6c757d;
             text-decoration: none;
             border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Shadow effect */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             transition: background-color 0.3s, transform 0.2s;
         }
 
         .button:hover {
-            background-color: #5a6268; /* Darker gray on hover */
+            background-color: #5a6268;
             transform: translateY(-2px);
         }
 
@@ -113,6 +127,8 @@
     </div>
 
     <div id="controls">
+        <input type="text" id="address-input" placeholder="Wpisz adres" />
+        <button id="go-to-address">Znajdź Adres</button>
         <input type="text" id="pin-name" placeholder="Dodaj Nazwę" />
         <button id="confirm-button" disabled>Dodaj Punkt</button>
     </div>
@@ -130,7 +146,7 @@
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            attribution: 'SprintOS contributors'
         }).addTo(map);
 
         var selectedCoordinates = null;
@@ -140,13 +156,10 @@
             var lat = e.latlng.lat;
             var lng = e.latlng.lng;
             selectedCoordinates = { latitude: lat, longitude: lng };
-
             document.getElementById('confirm-button').disabled = false;
-
             if (userMarker) {
                 map.removeLayer(userMarker);
             }
-
             userMarker = L.marker([lat, lng]).addTo(map)
                 .bindPopup('<b>Proposed Location</b><br>Latitude: ' + lat.toFixed(5) + ', Longitude: ' + lng.toFixed(5))
                 .openPopup();
@@ -154,7 +167,6 @@
 
         document.getElementById('confirm-button').addEventListener('click', function() {
             var pinName = document.getElementById('pin-name').value;
-
             if (selectedCoordinates && pinName) {
                 fetch("{% url 'get_save_point' %}", {
                     method: "POST",
@@ -167,17 +179,42 @@
                 .then(response => response.json())
                 .then(data => {
                     console.log("Coordinates saved:", data);
-
-
                     document.getElementById('confirm-button').disabled = true;
                     document.getElementById('pin-name').value = '';
+                    alert("Miejsce ewakuacji zostało dodane.");
                 })
                 .catch(error => {
                     console.error("Error saving coordinates:", error);
                     alert("Failed to send coordinates.");
                 });
-            } else {
+            }
+        });
 
+        document.getElementById('go-to-address').addEventListener('click', function() {
+            var address = document.getElementById('address-input').value;
+            if (address) {
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length > 0) {
+                            var lat = parseFloat(data[0].lat);
+                            var lon = parseFloat(data[0].lon);
+                            map.setView([lat, lon], 13);
+
+                            if (userMarker) {
+                                map.removeLayer(userMarker);
+                            }
+                            userMarker = L.marker([lat, lon]).addTo(map)
+                                .bindPopup('<b>Location Found</b><br>Latitude: ' + lat.toFixed(5) + ', Longitude: ' + lon.toFixed(5))
+                                .openPopup();
+                        } else {
+                            alert("Address not found.");
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error with geocoding:", error);
+                        alert("Failed to retrieve coordinates for the address.");
+                    });
             }
         });
     </script>
