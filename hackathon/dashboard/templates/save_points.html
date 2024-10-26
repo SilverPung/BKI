@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map View</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            align-items: center;
+            background-color: #f0f0f5;
+        }
+
+        header, footer {
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+            background-color: #333;
+            color: #fff;
+        }
+        footer {
+            margin-top: auto;
+        }
+
+        #map-container {
+            display: flex;
+            justify-content: center;
+            width: 90%;
+            margin: 20px auto;
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        #pin-name {
+            width: 80%;
+            padding: 12px;
+            font-size: 1rem;
+            margin-bottom: 10px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #confirm-button {
+            padding: 10px 20px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 8px;
+            background-color: #28a745;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #confirm-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #confirm-button:hover:not(:disabled) {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Dodaj Punkt Ewakuacji</h1>
+        <p>Dodaj punkt ewakuacji na mapie klikając na wybraną lokalizację.</p>
+    </header>
+
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+
+    <div id="controls">
+        <input type="text" id="pin-name" placeholder="Dodaj Nazwę" />
+        <button id="confirm-button" disabled>Dodaj Punkt</button>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 SprintOS</p>
+    </footer>
+
+    <script>
+        var map = L.map('map').setView([{{ latitude }}, {{ longitude }}], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var selectedCoordinates = null;
+        var userMarker = null;
+
+        map.on('click', function(e) {
+            var lat = e.latlng.lat;
+            var lng = e.latlng.lng;
+            selectedCoordinates = { latitude: lat, longitude: lng };
+
+            document.getElementById('confirm-button').disabled = false;
+
+            if (userMarker) {
+                map.removeLayer(userMarker);
+            }
+
+            userMarker = L.marker([lat, lng]).addTo(map)
+                .bindPopup('<b>Proposed Location</b><br>Latitude: ' + lat.toFixed(5) + ', Longitude: ' + lng.toFixed(5))
+                .openPopup();
+        });
+
+        document.getElementById('confirm-button').addEventListener('click', function() {
+            var pinName = document.getElementById('pin-name').value;
+
+            if (selectedCoordinates && pinName) {
+                fetch("{% url 'get_save_point' %}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": "{{ csrf_token }}"
+                    },
+                    body: JSON.stringify({ ...selectedCoordinates, name: pinName })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Coordinates saved:", data);
+                    alert("Pin point and name sent to the server!");
+
+                    document.getElementById('confirm-button').disabled = true;
+                    document.getElementById('pin-name').value = '';
+                })
+                .catch(error => {
+                    console.error("Error saving coordinates:", error);
+                    alert("Failed to send coordinates.");
+                });
+            } else {
+                alert("Please select a location on the map and enter a pin name.");
+            }
+        });
+    </script>
+</body>
+</html>

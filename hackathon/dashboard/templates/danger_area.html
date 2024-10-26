@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dodaj Obszar Zagrożenia</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            align-items: center;
+            background-color: #f0f0f5;
+        }
+
+        header, footer {
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+            background-color: #333;
+            color: #fff;
+        }
+
+        #map-container {
+            display: flex;
+            justify-content: center;
+            width: 90%;
+            margin: 20px auto;
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        #controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        #polygon-name {
+            width: 80%;
+            padding: 12px;
+            font-size: 1rem;
+            margin-bottom: 10px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #confirm-button, #redo-button, #delete-last-point-button {
+            padding: 10px 20px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-bottom: 5px;
+        }
+
+        #confirm-button {
+            background-color: #28a745;
+        }
+
+        #confirm-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #confirm-button:hover:not(:disabled) {
+            background-color: #218838;
+        }
+
+        #redo-button {
+            background-color: #dc3545;
+        }
+
+        #redo-button:hover {
+            background-color: #c82333;
+        }
+
+        #delete-last-point-button {
+            background-color: #ffc107;
+        }
+
+        #delete-last-point-button:hover {
+            background-color: #e0a800;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Dodaj Obszar Zagrożenia</h1>
+        <p>Wybierz punkty na mapie, aby utworzyć obszar zagrożenia.</p>
+    </header>
+
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+
+    <div id="controls">
+        <input type="text" id="polygon-name" placeholder="Wprowadź nazwę obszaru" />
+        <button id="confirm-button" disabled>Potwierdź</button>
+        <button id="redo-button" disabled>Reset</button>
+        <button id="delete-last-point-button" disabled>Usuń ostatni punkt</button>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 SprintOS</p>
+    </footer>
+
+    <script>
+        var map = L.map('map').setView([{{ latitude }}, {{ longitude }}], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var points = [];
+        var polygon = null;
+        var markers = [];
+
+        map.on('click', function(e) {
+            var latlng = [e.latlng.lat, e.latlng.lng];
+
+            if (points.length >= 3 && isCloseToFirstPoint(latlng)) {
+                closePolygon();
+            } else {
+                addPoint(latlng);
+            }
+        });
+
+        function addPoint(latlng) {
+            points.push(latlng);
+            var marker = L.marker(latlng).addTo(map);
+            markers.push(marker);
+
+            // Bind click event to the marker for closing the polygon
+            marker.on('click', function() {
+                if (points.length >= 3 && isCloseToFirstPoint(latlng)) {
+                    closePolygon();
+                }
+            });
+
+            if (points.length === 1) {
+                marker.bindPopup("First Point").openPopup();
+            }
+
+            document.getElementById('delete-last-point-button').disabled = points.length === 0;
+        }
+
+        function closePolygon() {
+            points.push(points[0]); // Close the polygon
+            document.getElementById('confirm-button').disabled = false;
+            document.getElementById('redo-button').disabled = false;
+
+            if (polygon) {
+                map.removeLayer(polygon);
+            }
+
+            polygon = L.polygon(points, { color: "#ff7800" }).addTo(map)
+                .bindPopup("<b>Proposed Polygon</b>").openPopup();
+
+            map.off('click'); // Disable further clicks after polygon is closed
+        }
+
+        function isCloseToFirstPoint(latlng) {
+            var firstPoint = points[0];
+            var distance = map.distance(latlng, firstPoint);
+            return distance < 10;
+        }
+
+        document.getElementById('confirm-button').addEventListener('click', function() {
+            var polygonName = document.getElementById('polygon-name').value;
+
+            if (points.length >= 3 && polygonName) {
+                fetch("{% url 'get_danger_area' %}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ 
+                        vertices: points,
+                        name: polygonName 
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Polygon saved:", data);
+                    alert("Polygon and name sent to the server!");
+                    resetSelection();
+                })
+                .catch(error => {
+                    console.error("Error saving polygon:", error);
+                    alert("Failed to send polygon data.");
+                });
+            } else {
+                alert("Please complete the polygon and enter a name.");
+            }
+        });
+
+        document.getElementById('redo-button').addEventListener('click', resetSelection);
+
+        document.getElementById('delete-last-point-button').addEventListener('click', function() {
+            if (points.length > 0) {
+                var lastMarker = markers.pop();
+                map.removeLayer(lastMarker);
+                points.pop();
+
+                document.getElementById('confirm-button').disabled = points.length < 3;
+                document.getElementById('delete-last-point-button').disabled = points.length === 0;
+            }
+        });
+
+        function resetSelection() {
+            points = [];
+            document.getElementById('confirm-button').disabled = true;
+            document.getElementById('redo-button').disabled = true;
+            document.getElementById('delete-last-point-button').disabled = true;
+            document.getElementById('polygon-name').value = '';
+
+            if (polygon) {
+                map.removeLayer(polygon);
+                polygon = null;
+            }
+
+            markers.forEach(marker => {
+                marker.off('click'); // Remove click event from markers
+                map.removeLayer(marker);
+            });
+            markers = [];
+
+            map.on('click', function(e) {
+                var latlng = [e.latlng.lat, e.latlng.lng];
+
+                if (points.length >= 3 && isCloseToFirstPoint(latlng)) {
+                    closePolygon();
+                } else {
+                    addPoint(latlng);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
